@@ -12,17 +12,18 @@ export const ROUTE_PUBLIC = "public";
 // MESSAGE
 export const DYNAMIC_API_ERROR_MESSAGE_ERROR_CODE = "ATC005";
 
-export const hideToastMessageFromAPI = [];
+export const hideToastMessageFromAPI: string[] = [];
 
 export const ADMIN_SERVICE_KEY = "ADMIN";
 export const USER_SERVICE_KEY = "USER";
 export const DEFAULT_SERVICE_KEY = "DEFAULT";
+export const API_SERVICE_KEY = "API";
 
 export const BASE_URLS = new Map();
 
 BASE_URLS.set(USER_SERVICE_KEY, `${process.env.NEXT_PUBLIC_API_BASE_URL}/user`);
 BASE_URLS.set(DEFAULT_SERVICE_KEY, `${process.env.NEXT_PUBLIC_API_BASE_URL}`);
-
+BASE_URLS.set(API_SERVICE_KEY, `${process.env.NEXT_PUBLIC_API_BASE_URL}/api`);
 // RESPONSE TYPE
 export const RESPONSE_OK = 200;
 export const RESPONSE_CREATED = 201;

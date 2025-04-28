@@ -59,7 +59,7 @@ export const AuthProvider = ({
     } else {
       setUser(null);
       removeAccessTokenFromLocalStorage();
-      if (ALL_ROUTES.LOGIN === pathname) {
+      if (ALL_ROUTES.LOGIN !== pathname) {
         router.push(ALL_ROUTES.LOGIN);
       }
     }
@@ -74,7 +74,7 @@ export const AuthProvider = ({
     } catch (error) {
       setUser(null);
       removeAccessTokenFromLocalStorage();
-      if (pathname === ALL_ROUTES.LOGIN) {
+      if (pathname !== ALL_ROUTES.LOGIN) {
         router.push(ALL_ROUTES.LOGIN);
       }
     } finally {
