@@ -1,14 +1,20 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Download, Eye, Share2, Edit } from "lucide-react"
-import Link from "next/link"
-import { FileUpload } from "@/components/file-upload"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Download, Eye, Share2, Edit } from "lucide-react";
+import Link from "next/link";
+import { FileUpload } from "@/components/file-upload";
+import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,120 +22,272 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import axios from "axios";
+import { api } from "@/api";
+import { ASSIGNMENTS_API } from "@/contants/api-url/assignments";
+import { checkSuccessResponse } from "@/utils/common";
 
-export default function AssignmentDetailPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const [assignNameOpen, setAssignNameOpen] = useState(false)
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null)
-  const [selectedStudent, setSelectedStudent] = useState("")
-  const [manualStudentName, setManualStudentName] = useState("")
-  const [activeTab, setActiveTab] = useState("select")
-  const { toast } = useToast()
+// Define interfaces
+interface Submission {
+  _id?: string; // Add _id for MongoDB documents
+  id: string;
+  studentName: string | null;
+  studentId: string;
+  submissionDate: string;
+  status: "graded" | "pending";
+  score: number | null;
+  aiScore: number;
+  plagiarismScore: number;
+}
 
-  // Mock data for the assignment
-  const assignment = {
-    id: params.id,
-    title: "Essay on Climate Change",
-    description: "Write a 500-word essay on the impacts of climate change on global ecosystems.",
-    dueDate: "2023-12-15",
-    totalPoints: 100,
-    submissions: [
-      {
-        id: "1",
-        studentName: "John Doe",
-        studentId: "S12345",
-        submissionDate: "2023-12-10",
-        status: "graded",
-        score: 85,
-        aiScore: 92,
-        plagiarismScore: 98,
-      },
-      {
-        id: "2",
-        studentName: "Jane Smith",
-        studentId: "S12346",
-        submissionDate: "2023-12-12",
-        status: "pending",
-        score: null,
-        aiScore: 88,
-        plagiarismScore: 95,
-      },
-      {
-        id: "3",
-        studentName: "Bob Johnson",
-        studentId: "S12347",
-        submissionDate: "2023-12-14",
-        status: "graded",
-        score: 92,
-        aiScore: 90,
-        plagiarismScore: 100,
-      },
-      {
-        id: "4",
-        studentName: null,
-        studentId: "S12348",
-        submissionDate: "2023-12-14",
-        status: "pending",
-        score: null,
-        aiScore: 0,
-        plagiarismScore: 0,
-      },
-    ],
-  }
+interface AssignmentData {
+  _id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  courseId?: any;
+  assignmentCategoryId?: any;
+  learningObjectivesDescription?: string;
+  canvas?: boolean;
+  google?: boolean;
+  googleMeet?: boolean;
+  systemPrompt?: string;
+  totalPoints: number;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+  submissions: Submission[];
+}
+
+export default function AssignmentDetailPage({}: {}) {
+  const router = useRouter();
+  const params = useParams();
+  const { id: assignmentId } = params; // Get assignmentId from params
+  const [assignNameOpen, setAssignNameOpen] = useState(false);
+  // Use the Submission type here
+  const [selectedSubmission, setSelectedSubmission] =
+    useState<Submission | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState("");
+  const [manualStudentName, setManualStudentName] = useState("");
+  const [activeTab, setActiveTab] = useState("select");
+  const { toast } = useToast();
+
+  // State for fetched assignment data, loading, and error
+  const [assignmentData, setAssignmentData] = useState<AssignmentData | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // State for formatted dates
+  const [formattedDueDate, setFormattedDueDate] = useState("");
+  const [formattedSubmissionDates, setFormattedSubmissionDates] = useState<{
+    [key: string]: string;
+  }>({});
+
+  // useEffect to fetch assignment details
+  useEffect(() => {
+    if (!assignmentId) {
+      setError("Assignment ID is missing.");
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchAssignmentDetails = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Make sure your API base URL is configured correctly,
+        // or use a relative path if the API is served from the same origin
+        const response = await api({
+          endpoint: ASSIGNMENTS_API.GET_BY_ID,
+          id: assignmentId as string,
+        });
+        if (checkSuccessResponse(response)) {
+          // Actual assignment data is in response.data.data
+          const fetchedData = response.data.data;
+
+          // Add mock submissions if needed - since API doesn't return submissions yet
+          if (!fetchedData.submissions) {
+            fetchedData.submissions = [];
+          }
+
+          setAssignmentData(fetchedData);
+        } else {
+          setError(
+            "Failed to fetch assignment details: Invalid response format."
+          );
+        }
+      } catch (err: unknown) {
+        console.error("Error fetching assignment:", err);
+        setError(
+          (err as any)?.response?.data?.message ||
+            (err as Error)?.message ||
+            "An unexpected error occurred while fetching assignment details."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAssignmentDetails();
+  }, [assignmentId]); // Re-run effect if assignmentId changes
+
+  // useEffect to format dates on the client side after data is fetched
+  useEffect(() => {
+    // Format due date
+    if (assignmentData?.dueDate) {
+      setFormattedDueDate(
+        new Date(assignmentData.dueDate).toLocaleDateString()
+      );
+    }
+
+    // Format submission dates
+    if (assignmentData?.submissions) {
+      const formattedDates: { [key: string]: string } = {};
+      assignmentData.submissions.forEach((sub) => {
+        // Use sub._id if available, otherwise use sub.id
+        const subId = sub._id || sub.id;
+        if (sub?.submissionDate && subId) {
+          formattedDates[subId] = new Date(
+            sub.submissionDate
+          ).toLocaleDateString();
+        }
+      });
+      setFormattedSubmissionDates(formattedDates);
+    }
+    // Depend on assignmentData to re-run formatting when data changes
+  }, [assignmentData]);
 
   const handleUploadComplete = (files: File[], images: string[]) => {
-    console.log("Files uploaded:", files)
-    console.log("Images captured:", images)
-    // Here you would typically process the files/images and send them to your backend
-  }
+    console.log("Files uploaded:", files);
+    console.log("Images captured:", images);
+    // TODO: Implement actual upload logic and update assignmentData.submissions
+    toast({
+      title: "Info",
+      description: "File upload handling not yet implemented.",
+    });
+  };
 
   const handleEditAssignment = () => {
-    // Navigate to the edit assignment page with the current assignment data
-    router.push(`/dashboard/assignments/${params.id}/edit`)
-  }
+    if (!assignmentId) return;
+    router.push(`/dashboard/assignments/${assignmentId}/edit`);
+  };
 
-  const handleAssignName = () => {
-    const studentName = activeTab === "select" ? selectedStudent : manualStudentName
+  const handleAssignName = async () => {
+    // Make async if you need to call API
+    const studentName =
+      activeTab === "select" ? selectedStudent : manualStudentName;
+    const submissionId = selectedSubmission?._id || selectedSubmission?.id;
 
     if (!studentName) {
       toast({
         title: "Error",
         description: "Please select or enter a student name",
         variant: "destructive",
-      })
-      return
+      });
+      return;
+    }
+    if (!selectedSubmission || !submissionId) {
+      toast({
+        title: "Error",
+        description: "No submission selected.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Here you would update the submission with the student name
-    // This is a placeholder for the actual implementation
+    // --- TODO: API Call to update submission ---
+    // For now, just show success toast (replace with actual API call)
     toast({
-      title: "Success",
-      description: `Submission assigned to ${studentName}`,
-    })
+      title: "Success (Placeholder)",
+      description: `Submission assigned to ${studentName}. (API call needed)`,
+    });
+    // OPTIMISTIC UPDATE (Remove if you implement API call above with state update)
+    setAssignmentData((prevData) => {
+      if (!prevData) return null;
+      return {
+        ...prevData,
+        submissions: prevData.submissions.map((sub) =>
+          (sub._id || sub.id) === submissionId ? { ...sub, studentName } : sub
+        ),
+      };
+    });
 
-    setAssignNameOpen(false)
-    setSelectedSubmission(null)
-    setSelectedStudent("")
-    setManualStudentName("")
+    setAssignNameOpen(false);
+    setSelectedSubmission(null);
+    setSelectedStudent("");
+    setManualStudentName("");
+  };
+
+  // Use the Submission type for the parameter
+  const openAssignNameDialog = (submission: Submission) => {
+    setSelectedSubmission(submission);
+    // Reset state for the dialog
+    setSelectedStudent("");
+    setManualStudentName("");
+    setActiveTab("select"); // Reset to select tab
+    setAssignNameOpen(true);
+  };
+
+  // --- Render Loading State ---
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6 space-y-6 flex justify-center items-center h-screen">
+        {/* Add a spinner or loading text */}
+        <p>Loading assignment details...</p>
+      </div>
+    );
   }
 
-  const openAssignNameDialog = (submission) => {
-    setSelectedSubmission(submission)
-    setAssignNameOpen(true)
+  // --- Render Error State ---
+  if (error) {
+    return (
+      <div className="container mx-auto py-6 space-y-6 text-red-600">
+        <h1 className="text-2xl font-bold">Error</h1>
+        <p>{error}</p>
+        <Button onClick={() => router.back()}>Go Back</Button>
+      </div>
+    );
   }
 
+  // --- Render No Data State ---
+  if (!assignmentData) {
+    return (
+      <div className="container mx-auto py-6 space-y-6">
+        <p>Assignment not found.</p>
+        <Button onClick={() => router.back()}>Go Back</Button>
+      </div>
+    );
+  }
+
+  // --- Render Assignment Details ---
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{assignment.title}</h1>
-          <p className="text-muted-foreground">Due: {new Date(assignment.dueDate).toLocaleDateString()}</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {/* Use fetched data */}
+            {assignmentData.title}
+          </h1>
+          <p className="text-muted-foreground">
+            {/* Use the state variable for the formatted due date */}
+            Due: {formattedDueDate || "..."}{" "}
+            {/* Show placeholder while loading */}
+          </p>
         </div>
         <div className="flex gap-2">
           <FileUpload
@@ -150,88 +308,169 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
           <CardTitle>Assignment Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>{assignment.description}</p>
+          {/* Use fetched data */}
+          <p>{assignmentData.description}</p>
           <p className="mt-2">
-            <strong>Total Points:</strong> {assignment.totalPoints}
+            {/* Use fetched data - ensure totalPoints exists */}
+            <strong>Total Points:</strong> {assignmentData.totalPoints ?? "N/A"}
           </p>
+          {assignmentData.learningObjectivesDescription && (
+            <p className="mt-2">
+              <strong>Learning Objectives:</strong>{" "}
+              {assignmentData.learningObjectivesDescription}
+            </p>
+          )}
+          {assignmentData.courseId && (
+            <p className="mt-2">
+              <strong>Course:</strong> {assignmentData.courseId.courseTitle}
+            </p>
+          )}
+          {assignmentData.assignmentCategoryId && (
+            <p className="mt-2">
+              <strong>Assignment Type:</strong>{" "}
+              {assignmentData.assignmentCategoryId.title}
+            </p>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Submissions</CardTitle>
-          <CardDescription>{assignment.submissions.length} submissions received</CardDescription>
+          {/* Use fetched data */}
+          <CardDescription>
+            {assignmentData.submissions?.length ?? 0} submissions received
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {assignment.submissions.map((submission) => (
-              <div key={submission.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-4">
-                  <Avatar>
-                    <AvatarImage src={`/placeholder.svg?height=40&width=40`} />
-                    <AvatarFallback>
-                      {submission.studentName
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("") || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    {submission.studentName ? (
-                      <p className="font-medium">{submission.studentName}</p>
-                    ) : (
-                      <Button
-                        variant="link"
-                        className="p-0 h-auto font-medium text-blue-500"
-                        onClick={() => openAssignNameDialog(submission)}
-                      >
-                        Assign Student Name
-                      </Button>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      Submitted: {new Date(submission.submissionDate).toLocaleDateString()}
-                    </p>
+            {/* Use fetched data */}
+            {assignmentData.submissions &&
+            assignmentData.submissions.length > 0 ? (
+              assignmentData.submissions.map((submission) => {
+                // Adjust key based on actual ID field (_id or id)
+                const submissionId = submission._id || submission.id;
+                const submissionKey = `sub-${submissionId}`;
+                return (
+                  <div
+                    key={submissionKey}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      <Avatar>
+                        <AvatarImage
+                          src={`/placeholder.svg?height=40&width=40`}
+                        />
+                        <AvatarFallback>
+                          {submission.studentName
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("") || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        {submission.studentName ? (
+                          <p className="font-medium">
+                            {submission.studentName}
+                          </p>
+                        ) : (
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto font-medium text-blue-500"
+                            onClick={() => openAssignNameDialog(submission)}
+                          >
+                            Assign Student Name
+                          </Button>
+                        )}
+                        <p className="text-sm text-muted-foreground">
+                          {/* Use the state variable for the formatted submission date */}
+                          Submitted:{" "}
+                          {formattedSubmissionDates[submissionId] || "..."}{" "}
+                          {/* Show placeholder */}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {submission.status === "graded" ? (
+                        <Badge className="bg-green-500">
+                          {/* Ensure score exists */}
+                          {submission.score ?? "N/A"}/
+                          {assignmentData.totalPoints ?? 100}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Pending</Badge>
+                      )}
+                      <div className="flex gap-2">
+                        {/* Update links to use the correct assignmentId and submissionId */}
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          asChild
+                          title="Share"
+                        >
+                          <Link
+                            href={`/dashboard/assignments/${assignmentId}/submissions/${submissionId}/share`}
+                          >
+                            <Share2 className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          asChild
+                          title="Download"
+                        >
+                          {/* TODO: Link to actual download endpoint */}
+                          <Link
+                            href={`/api/submissions/${submissionId}/download`} // Example endpoint
+                            target="_blank" // Optional: Open in new tab
+                            rel="noopener noreferrer"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          asChild
+                          title="Review"
+                        >
+                          <Link
+                            href={`/dashboard/assignments/${assignmentId}/submissions/${submissionId}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {submission.status === "graded" ? (
-                    <Badge className="bg-green-500">{submission.score}/100</Badge>
-                  ) : (
-                    <Badge variant="outline">Pending</Badge>
-                  )}
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon" asChild title="Share">
-                      <Link href={`/dashboard/assignments/${params.id}/submissions/${submission.id}/share`}>
-                        <Share2 className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="icon" asChild title="Download">
-                      <Link href={`/dashboard/assignments/${params.id}/submissions/${submission.id}/download`}>
-                        <Download className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="icon" asChild title="Review">
-                      <Link href={`/dashboard/assignments/${params.id}/submissions/${submission.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                );
+              })
+            ) : (
+              <p className="text-muted-foreground">
+                No submissions received yet.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Assign Name Dialog (ensure student list is dynamic or fetched if needed) */}
       <Dialog open={assignNameOpen} onOpenChange={setAssignNameOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Assign Student Name</DialogTitle>
             <DialogDescription>
-              This submission doesn't have a student name. Please assign a student to it.
+              This submission ({selectedSubmission?.studentId}) doesn't have a
+              student name. Please assign a student to it.
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="select">Select Student</TabsTrigger>
               <TabsTrigger value="manual">Enter Manually</TabsTrigger>
@@ -240,17 +479,20 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
             <TabsContent value="select" className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="student-select">Select from class roster</Label>
-                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                <Select
+                  value={selectedStudent}
+                  onValueChange={setSelectedStudent}
+                >
                   <SelectTrigger id="student-select">
                     <SelectValue placeholder="Select a student" />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* This would be populated from your actual student list */}
-                    <SelectItem value="john-doe">John Doe</SelectItem>
-                    <SelectItem value="jane-smith">Jane Smith</SelectItem>
-                    <SelectItem value="alex-johnson">Alex Johnson</SelectItem>
-                    <SelectItem value="sam-wilson">Sam Wilson</SelectItem>
-                    <SelectItem value="taylor-brown">Taylor Brown</SelectItem>
+                    {/* TODO: Populate this from your actual student list/API */}
+                    <SelectItem value="John Doe">John Doe</SelectItem>
+                    <SelectItem value="Jane Smith">Jane Smith</SelectItem>
+                    <SelectItem value="Alex Johnson">Alex Johnson</SelectItem>
+                    <SelectItem value="Sam Wilson">Sam Wilson</SelectItem>
+                    <SelectItem value="Taylor Brown">Taylor Brown</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -270,10 +512,11 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
           </Tabs>
 
           <DialogFooter>
+            {/* TODO: Disable button while assigning name API call is in progress */}
             <Button onClick={handleAssignName}>Assign Name</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

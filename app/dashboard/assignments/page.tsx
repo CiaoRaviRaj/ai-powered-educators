@@ -13,9 +13,119 @@ import { Input } from "@/components/ui/input";
 import { CalendarDays, Clock, FileText, Plus, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "react-query";
+import { api, paramsType } from "@/api";
+import { ASSIGNMENTS_API } from "@/contants/api-url/assignments";
+import { checkSuccessResponse } from "@/utils/common";
+
+interface Assignment {
+  _id: string;
+  title: string;
+  description?: string;
+  dueDate: string;
+  courseId?: {
+    name: string;
+    _id: string;
+  };
+  status?: string;
+  submissions?: number;
+}
 
 export default function AssignmentsPage() {
   const { toast } = useToast();
+  const [inputValue, setInputValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch assignments using useQuery
+  const { data, isLoading, error, refetch } = useQuery(
+    ["assignments", searchQuery],
+    async () => {
+      const searchParams: paramsType = searchQuery
+        ? { search: inputValue }
+        : {};
+      const response = await api({
+        endpoint: ASSIGNMENTS_API.GET_ALL,
+        params: searchParams,
+      });
+      return response;
+    },
+    {
+      keepPreviousData: true,
+      refetchOnWindowFocus: false,
+    }
+  );
+
+  // Extract assignments from the query response
+  const assignments = data?.data?.data || [];
+
+  // Handle search input change with debounce
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+
+    // Clear previous timeout
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    // Set new timeout for debounce
+    searchTimeout.current = setTimeout(() => {
+      setSearchQuery(value);
+    }, 500);
+  };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">Assignments</h2>
+          <div className="flex items-center space-x-2">
+            <Link href="/dashboard/create-assignment">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Assignment
+              </Button>
+            </Link>
+          </div>
+        </div>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">Assignments</h2>
+          <div className="flex items-center space-x-2">
+            <Link href="/dashboard/create-assignment">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Assignment
+              </Button>
+            </Link>
+          </div>
+        </div>
+        <div className="flex justify-center items-center h-64">
+          <p className="text-red-500">Error loading assignments</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -38,156 +148,57 @@ export default function AssignmentsPage() {
             type="search"
             placeholder="Search assignments..."
             className="w-[200px] pl-8 md:w-[300px]"
+            value={inputValue}
+            onChange={handleSearchChange}
           />
         </div>
       </div>
 
       {/* ASSIGNMENT LIST */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div className="space-y-1">
-              <CardTitle>Research Paper</CardTitle>
-              <CardDescription>
-                Introduction to Psychology (PSY 101)
-              </CardDescription>
-            </div>
-            <Badge>Active</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <CalendarDays className="mr-1 h-4 w-4" />
-                <span>Due: May 15, 2025</span>
-              </div>
-              <div className="flex items-center mt-1">
-                <FileText className="mr-1 h-4 w-4" />
-                <span>32 submissions</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Link href="/dashboard/assignments/1" className="w-full">
-              <Button variant="outline" className="w-full">
-                View Details
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div className="space-y-1">
-              <CardTitle>Midterm Exam</CardTitle>
-              <CardDescription>Advanced Statistics (STAT 301)</CardDescription>
-            </div>
-            <Badge>Active</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <CalendarDays className="mr-1 h-4 w-4" />
-                <span>Due: April 10, 2025</span>
-              </div>
-              <div className="flex items-center mt-1">
-                <FileText className="mr-1 h-4 w-4" />
-                <span>45 submissions</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Link href="/dashboard/assignments/2" className="w-full">
-              <Button variant="outline" className="w-full">
-                View Details
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div className="space-y-1">
-              <CardTitle>Case Study Analysis</CardTitle>
-              <CardDescription>Environmental Science (ENV 201)</CardDescription>
-            </div>
-            <Badge variant="outline">Draft</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <Clock className="mr-1 h-4 w-4" />
-                <span>Created: March 22, 2025</span>
-              </div>
-              <div className="flex items-center mt-1">
-                <FileText className="mr-1 h-4 w-4" />
-                <span>Not published</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Link href="/dashboard/assignments/3" className="w-full">
-              <Button variant="outline" className="w-full">
-                Edit Draft
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div className="space-y-1">
-              <CardTitle>Final Project</CardTitle>
-              <CardDescription>Creative Writing (ENG 215)</CardDescription>
-            </div>
-            <Badge>Active</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <CalendarDays className="mr-1 h-4 w-4" />
-                <span>Due: June 1, 2025</span>
-              </div>
-              <div className="flex items-center mt-1">
-                <FileText className="mr-1 h-4 w-4" />
-                <span>18 submissions</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Link href="/dashboard/assignments/4" className="w-full">
-              <Button variant="outline" className="w-full">
-                View Details
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div className="space-y-1">
-              <CardTitle>Weekly Quiz</CardTitle>
-              <CardDescription>
-                Introduction to Psychology (PSY 101)
-              </CardDescription>
-            </div>
-            <Badge variant="secondary">Archived</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <CalendarDays className="mr-1 h-4 w-4" />
-                <span>Ended: March 1, 2025</span>
-              </div>
-              <div className="flex items-center mt-1">
-                <FileText className="mr-1 h-4 w-4" />
-                <span>30 submissions</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Link href="/dashboard/assignments/5" className="w-full">
-              <Button variant="outline" className="w-full">
-                View Details
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
+        {assignments.length > 0 ? (
+          assignments.map((assignment: Assignment) => (
+            <Card key={assignment._id}>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle>{assignment.title}</CardTitle>
+                  <CardDescription>
+                    {assignment.courseId?.name || "No course"}
+                  </CardDescription>
+                </div>
+                <Badge>{assignment.status || "Active"}</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  <div className="flex items-center">
+                    <CalendarDays className="mr-1 h-4 w-4" />
+                    <span>
+                      Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center mt-1">
+                    <FileText className="mr-1 h-4 w-4" />
+                    <span>{assignment.submissions || 0} submissions</span>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Link
+                  href={`/dashboard/assignments/${assignment._id}`}
+                  className="w-full"
+                >
+                  <Button variant="outline" className="w-full">
+                    View Details
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8">
+            <p className="text-muted-foreground">No assignments found</p>
+          </div>
+        )}
       </div>
     </div>
   );

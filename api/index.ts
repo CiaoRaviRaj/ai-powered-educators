@@ -2,6 +2,7 @@ import { AxiosRequestConfig, AxiosResponse, CancelToken } from "axios";
 
 import {
   ALL_ROUTES,
+  API_SERVICE_KEY,
   BASE_URLS,
   DYNAMIC_API_ERROR_MESSAGE_ERROR_CODE,
   hideToastMessageFromAPI,
@@ -62,7 +63,7 @@ export const api = async <T = any>({
     isMultipart,
     url,
     showToast,
-    module,
+    module = API_SERVICE_KEY,
     ToastMessages,
     responseType,
     succesMsgHide,
