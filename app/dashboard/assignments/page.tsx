@@ -1,14 +1,21 @@
-"use client"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { CalendarDays, Clock, FileText, Plus, Search } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
+"use client";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { CalendarDays, Clock, FileText, Plus, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AssignmentsPage() {
-  const { toast } = useToast()
+  const { toast } = useToast();
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -27,16 +34,23 @@ export default function AssignmentsPage() {
       <div className="flex justify-end mb-4">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input type="search" placeholder="Search assignments..." className="w-[200px] pl-8 md:w-[300px]" />
+          <Input
+            type="search"
+            placeholder="Search assignments..."
+            className="w-[200px] pl-8 md:w-[300px]"
+          />
         </div>
       </div>
 
+      {/* ASSIGNMENT LIST */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <div className="space-y-1">
               <CardTitle>Research Paper</CardTitle>
-              <CardDescription>Introduction to Psychology (PSY 101)</CardDescription>
+              <CardDescription>
+                Introduction to Psychology (PSY 101)
+              </CardDescription>
             </div>
             <Badge>Active</Badge>
           </CardHeader>
@@ -148,7 +162,9 @@ export default function AssignmentsPage() {
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <div className="space-y-1">
               <CardTitle>Weekly Quiz</CardTitle>
-              <CardDescription>Introduction to Psychology (PSY 101)</CardDescription>
+              <CardDescription>
+                Introduction to Psychology (PSY 101)
+              </CardDescription>
             </div>
             <Badge variant="secondary">Archived</Badge>
           </CardHeader>
@@ -174,5 +190,5 @@ export default function AssignmentsPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

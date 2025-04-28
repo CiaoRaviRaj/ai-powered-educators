@@ -5,13 +5,13 @@ import Spinner from "@/components/common/Spinner";
 
 import { createContext, useContext, ReactNode } from "react";
 
-type authGuardContextType = {};
+type AuthGuardContextType = {};
 
-const authGuardContext = createContext<authGuardContextType | undefined>(
+const AuthGuardContext = createContext<AuthGuardContextType | undefined>(
   undefined
 );
 
-export const authGuardProvider = ({
+export const AuthGuardProvider = ({
   children,
   values,
 }: {
@@ -29,12 +29,12 @@ export const authGuardProvider = ({
     }
   }
   return (
-    <authGuardContext.Provider value={{}}>{render()}</authGuardContext.Provider>
+    <AuthGuardContext.Provider value={{}}>{render()}</AuthGuardContext.Provider>
   );
 };
 
 export const useauthGuard = () => {
-  const context = useContext(authGuardContext);
+  const context = useContext(AuthGuardContext);
   if (!context)
     throw new Error("useauthGuard must be used within authGuardProvider");
   return context;

@@ -5,6 +5,7 @@ import { JSX, PropsWithChildren, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/context/auth-context/AuthContextProvider";
 import { ALL_ROUTES, USER_ACCESS_TOKEN_KEY } from "@/contants/appConstant";
+import { getAccessTokenFromLocalStorage } from "@/utils/auth";
 
 // ** Hooks Import
 
@@ -20,8 +21,9 @@ const AuthGuard = (props: PropsWithChildren<{ fallback: JSX.Element }>) => {
 
       if (
         auth.user === null &&
-        !window.localStorage.getItem(USER_ACCESS_TOKEN_KEY)
+        !getAccessTokenFromLocalStorage()
       ) {
+        console.log("router.asPath: ", router.asPath, ALL_ROUTES.LOGIN);
         if (router.asPath !== ALL_ROUTES.LOGIN) {
           router.replace({
             pathname: ALL_ROUTES.LOGIN,

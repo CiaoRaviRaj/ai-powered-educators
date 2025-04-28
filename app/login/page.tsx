@@ -24,8 +24,7 @@ import { LOGIN_API } from "@/contants/api-url/auth";
 import { useEffect } from "react";
 import { checkSuccessResponse } from "@/utils/common";
 import {
-  DEFAULT_PAGE_ON_LOGIN,
-  USER_ACCESS_TOKEN_KEY,
+  DEFAULT_PAGE_ON_LOGIN
 } from "@/contants/appConstant";
 import { setAccessTokenInLocalStorage } from "@/utils/auth";
 import { useAuth } from "@/context/auth-context/AuthContextProvider";

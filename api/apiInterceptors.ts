@@ -1,3 +1,4 @@
+import { ALL_ROUTES } from "@/contants/appConstant";
 import axios, { AxiosResponse, AxiosError } from "axios";
 
 interface ErrorResponse {
@@ -28,9 +29,11 @@ axiosInstance.interceptors.response.use(
 
     // Handle 401 and 403 status codes
     if (error?.response?.status === 401 || error?.response?.status === 403) {
-      let url = "/login";
+      let url = ALL_ROUTES.LOGIN;
 
-      window.location.replace(url);
+      if (window.location.pathname !== url) {
+        window.location.replace(url);
+      }
     }
 
     return Promise.reject(error);

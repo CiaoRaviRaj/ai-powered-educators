@@ -14,31 +14,22 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
 import { useMutation } from "react-query";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 
 import {
-  CheckIcon,
-  CreditCard,
-  ArrowLeft,
-  Sparkles,
-  Shield,
-  Check,
-  BadgeCheck,
-  Zap,
+  CheckIcon, Sparkles,
+  Shield, Zap,
   BookOpen,
-  ShieldCheck,
+  ShieldCheck
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { api, paramsType } from "@/api";
 import { SIGNUP_API } from "@/contants/api-url/auth";
 import { checkSuccessResponse } from "@/utils/common";
 import {
-  DEFAULT_PAGE_ON_LOGIN,
-  USER_ACCESS_TOKEN_KEY,
+  DEFAULT_PAGE_ON_LOGIN
 } from "@/contants/appConstant";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";

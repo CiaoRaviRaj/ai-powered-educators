@@ -5,7 +5,7 @@ export function isClientSide() {
 }
 
 export function getAccessTokenFromLocalStorage() {
-  return isClientSide() && localStorage.getItem("accessToken");
+  return isClientSide() && localStorage.getItem(USER_ACCESS_TOKEN_KEY);
 }
 
 export function setAccessTokenInLocalStorage(accessToken: String) {
@@ -17,5 +17,5 @@ export function setAccessTokenInLocalStorage(accessToken: String) {
 }
 
 export function removeAccessTokenFromLocalStorage() {
-  return isClientSide() && localStorage.removeItem("accessToken");
+  return isClientSide() && localStorage.removeItem(USER_ACCESS_TOKEN_KEY);
 }
