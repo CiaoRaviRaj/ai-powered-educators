@@ -12,7 +12,7 @@ export const ROUTE_PUBLIC = "public";
 // MESSAGE
 export const DYNAMIC_API_ERROR_MESSAGE_ERROR_CODE = "ATC005";
 
-export const hideToastMessageFromAPI = [];
+export const hideToastMessageFromAPI: string[] = [];
 
 export const ADMIN_SERVICE_KEY = "ADMIN";
 export const USER_SERVICE_KEY = "USER";

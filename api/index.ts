@@ -174,7 +174,11 @@ export const api = async <T = any>({
     );
   }
 
-  return res;
+  return (
+    res || {
+      data: { error: true, data: null as T, message: "No response received" },
+    }
+  );
 };
 
 const getSuccessToastMessage = (
